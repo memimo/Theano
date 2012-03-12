@@ -774,14 +774,14 @@ def scan( fn
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
-    fake_outputs = scan_utils.clone(outputs,
+    fake_outputs = scan_utils.clone(outputs + updates.values(),
                                     replace=dict(zip(non_seqs,
                                                      fake_nonseqs)))
     all_inputs = itertools.ifilter(
         lambda x: ( isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant) ),
-        gof.graph.inputs( fake_outputs) )
+        gof.graph.inputs(fake_outputs) )
     extra_inputs     = filter( lambda x: x not in args + fake_nonseqs,
                                     all_inputs)
     non_seqs += extra_inputs
