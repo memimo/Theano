@@ -94,7 +94,58 @@ class SelectEntries(theano.gof.Op):
 
 select_entries=lambda x: SelectEntries(x)
 
+
 class SelectHigherEntries(theano.gof.Op):
+    def __init__(self, min_allowed=None):
+        self.min_allowed = min_allowed
+
+    def __eq__(self, other):
+        return (type(self) == type(other)) and \
+               (self.min_allowed == other.min_allowed)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.min_allowed)
+
+    def __str__(self):
+        if self.min_allowed is None:
+            return '%s' % self.__class__.__name__
+        else:
+            return '%s{%d}' %(self.__class__.__name__,
+                              self.min_allowed)
+
+    def make_node(self, x):
+        return theano.gof.Apply(self, [x], [x.type(), theano.tensor.ivector()])
+
+    def perform(self, node, inp, out_):
+        x, = inp
+        out, indxs = out_
+        indx = numpy.arange(x.shape[0]).astype('int32')
+        if self.min_allowed is None:
+            out[0] = x[x != -1]
+            indxs[0] = indx[x!= -1]
+        else:
+            out[0] = x[ (x != -1) * (x > self.min_allowed)]
+            indxs[0] = indx[ ( x!=-1) * (x > self.min_allowed)]
+
+    # FIXME
+    def grad(self, inp, grads):
+        x,_ = inp
+        gz,gi = grads
+        # restore the broadcasting pattern of the input
+        return [select_entries_two(self.min_allowed)(gz,x),
+                select_entries_two(self.min_allowed)(gi,x) ]
+
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        return [select_entries_two(self.min_allowed)(eval_points[0],
+                                                     inputs[0]),
+               select_entries_two(self.min_allowed)(eval_points[1],
+                                                    inputs[0]) ]
+
+select_higher_entries= SelectHigherEntries()
+
+class SelectHigherEntriesTensor(theano.gof.Op):
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -114,5 +165,5 @@ class SelectHigherEntries(theano.gof.Op):
         out[0] = x[ (x != -1) * (x > y)]
         indxs[0] = indx[ ( x!=-1) * (x > y)]
 
-select_higher_entries= SelectHigherEntries()
+select_higher_entries_tenosr = SelectHigherEntries()
 
